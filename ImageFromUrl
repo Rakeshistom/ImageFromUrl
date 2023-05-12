@@ -1,0 +1,48 @@
+public class ImageFromUrl {
+    
+    @InvocableMethod(callout=true label = 'Convert an Image URL to Base64' iconName='slds:custom:custom63')
+    
+    public static void getDataUriFromUri(List<Request> requestList) {
+        
+        for (Request r: requestList){  
+            
+            HttpRequest req = new HttpRequest();
+            req.setEndpoint(r.imageURL);
+            req.setMethod('GET');
+            Http binding = new Http();
+            HttpResponse res = binding.send(req);
+            Blob image = res.getBodyAsBlob(); 
+            
+            
+            // Creates the contentversion
+            ContentVersion cv = new ContentVersion();
+            cv.Title = r.fileName;
+            cv.PathOnClient = r.fileName + '.jpg';
+            cv.VersionData = image;
+            INSERT cv;
+            
+            // Get the content document id from contentversion
+            Id contentDocumentId = [SELECT ContentDocumentId FROM ContentVersion WHERE Id = :cv.Id].ContentDocumentId;
+            
+            //Create ContentDocumentLink and  Link the content document to a record
+            ContentDocumentLink cdl = New ContentDocumentLink();
+            cdl.LinkedEntityId = r.recordId;
+            cdl.ContentDocumentId = contentDocumentId;
+            cdl.shareType = 'V';
+            Insert cdl;
+            
+            //return 'data:'+res.getHeader('Content-Type')+';base64,'+EncodingUtil.base64Encode(image);
+        }
+    }
+    
+    public class Request{
+        @InvocableVariable(label = 'Image URL' required = true)
+        public String imageURL;
+        
+        @InvocableVariable(label = 'Parent Record Id' required = true)
+        public Id recordId;
+        
+        @InvocableVariable(label = 'Image File Name' required = true)
+        public String fileName;
+    }
+}
